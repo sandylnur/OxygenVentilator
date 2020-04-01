@@ -1,3 +1,5 @@
+#include <EEPROM.h>
+
 /* Date: 12/01/2018 (DD:MM:YYYY)
     Updated on: 12/01/2018
     Version: 0.1

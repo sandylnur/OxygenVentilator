@@ -5,10 +5,13 @@
 
 void loop() {
     // put your main code here, to run repeated
-    
+
     // check if button is pressed and excute action from function
         checkBtnInput();
     
 
-    
+   
+   
+    // counter for emergency - should excute at the end
+    eCheck();
 }

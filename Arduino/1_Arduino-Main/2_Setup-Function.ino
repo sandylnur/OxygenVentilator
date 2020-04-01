@@ -12,8 +12,12 @@ Serial.begin(9600);
             ; // wait for serial port to connect. Needed for native USB
         }
 
+    // setup EEPROM to remember state in case of powerloss
+        verifyEmergency();
+
     // setup for push button
         setupCheckBtn();
-        
+    
+
 
 }
