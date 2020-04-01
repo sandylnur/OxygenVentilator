@@ -44,35 +44,66 @@
   }
 
 // emergency button input
-const int echeckComp = 5;
-int echeckCount = 0;
+  bool emergency = false;
+  const int emerBtnPin = 4;   // push button input pin
+  int emerStatus = 0;
+
+  void setupEmergencyBtn() {
+    pinMode(emerBtnPin, INPUT); // declare pushbutton as input
+  }
+
+  void emerBtnInput() {
+    emerStatus = digitalRead(emerBtnPin);  // read input value
+
+    if (emerStatus == HIGH) {         // button being pushed
+        
+        delay(500);
+
+        if (emergency == false){
+          Serial.println("Emmergency Occured");
+          // stop the ventilator
+          stopVentilator();
+          emergency = true;
+          //EEPROM.write(1, 1);
+
+        } else {
+          Serial.println("Emmergency Resolved");
+          emergency = false; // testing only
+        }
+        
+    } else {
+      // button not being pushed
+    }
+  }
+
+  void emergencyAction(){
+    if (emergency == true){
+      buzzer();
+    }
+  }
+
+  int eepromValueOne = 0;
+  const int eepromValueCheck = 0;
 
   void verifyEmergency() {
-    int eepromValueOne = EEPROM.read(0);
-    int eepromValueOneTwo = EEPROM.read(1)
+    int eepromValue = EEPROM.read(0);
+    int eepromValueOne = EEPROM.read(1);
 
-    if (echeckCount != echeckComp){
+    if (eepromValueCheck == 0) {
+      Serial.println("A Power Error Occured");
+      // stop the ventilator
+      stopVentilator();
+      emergency = true;
 
+      if (eepromValue == 1) {
+        Serial.println("Ventilator was active");
+        emergency = true;
+        //startVentilator();
 
+      } else {
+        Serial.println("Ventilator was in-active");
 
-      
-    }
-
-    if (eepromValueOne == 1) {
-      Serial.println("Ventilator was active");
-      startVentilator();
-
-    } else {
-      Serial.println("Ventilator was in-active");
-
-    }
-  }
-
-  void eCheck() {
-    if (echeckCount <= 4){
-      echeckCount++;
-      EEPROM.write(1, echeckCount);
-    } else {
-      echeckCount = 0;
+      }
     }
   }
+

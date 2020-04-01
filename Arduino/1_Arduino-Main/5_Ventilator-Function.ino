@@ -11,7 +11,7 @@ void startVentilator(){
     EEPROM.write(0, 1); // emergency backup
     buzzer();
     // write code to start ventilator
-
+    
 
 
 
