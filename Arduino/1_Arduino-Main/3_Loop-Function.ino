@@ -4,6 +4,11 @@
 */
 
 void loop() {
-    // put your main code here, to run repeatedly:
+    // put your main code here, to run repeated
+    
+    // check if button is pressed and excute action from function
+        checkBtnInput();
+    
+
     
 }
