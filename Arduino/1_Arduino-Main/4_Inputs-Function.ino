@@ -13,7 +13,18 @@
         int potValue = analogRead(potTwoPin);
         int potMappedValue = map(potValue, 0, 1024, 0, 100);
         return potMappedValue;
-      }
+      } 
+    if (potMappedValue ==0) && (potMappedValue==20){
+      potValue= map(val,0,240,0,20);}
+    else if {(potMappedValue==21) &&(potMappedValue==40)
+      potValue= map ( val,241,480,21,40);}
+    else if (potMappedVal==41) && (potMappedValue==60) {
+      potValue= map ( val,481,720, 41,60);}
+    else if (potMappedVal==61) && ( potMappedValue==80){
+      potValue= map ( val,721,960, 61,80);}
+    else if (potMappedVal==81) && (potMappedValue==99){
+      potValue= map (val,961,1024,81,99);}
+      
   }
 
 // button control
