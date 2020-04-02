@@ -11,5 +11,9 @@ void loop() {
 
     // check if button is pressed and excute action from function
         checkBtnInput();   
+
+    // testing 
+     int presets  = getPotInput("presets_in");
+     Serial.println(presets);
    
 }
