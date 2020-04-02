@@ -1,6 +1,6 @@
 // potentiometer connected pins
-  const int potOnePin = A1;    // potentiometer one
-  const int potTwoPin = A2;    // potentiometer two
+  const int potOnePin   = A1;    // potentiometer one
+  const int potTwoPin   = A2;    // potentiometer two
   const int potThreePin = A3;  // potentiometer three
 
 // function to get the potentiometer input "potentioOne" "potentioTwo"

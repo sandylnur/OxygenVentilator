@@ -13,8 +13,9 @@ Serial.begin(9600);
         }
 
     // setup EEPROM to remember state in case of powerloss
-        setupEmergencyBtn();
         verifyEmergency();
+        setupEmergencyBtn();
+        
 
     // setup for push button
         setupCheckBtn();

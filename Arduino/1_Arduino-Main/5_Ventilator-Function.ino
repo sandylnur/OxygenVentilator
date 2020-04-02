@@ -24,7 +24,7 @@ void stopVentilator(){
     EEPROM.write(0, 0); // emergency backup
     buzzer();
     // write code to stop ventilator
-
+    
 
 
 
