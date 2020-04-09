@@ -1,6 +1,13 @@
+/*
+ *  Date: 04/04/2020 (DD:MM:YYYY)
+ *  Updated on: 08/04/2020
+ *  OxygenVentilator Project - Rack and Pinion
+ * 
+ */
+
 #include <LiquidCrystal.h>
 
-#define fomula_debug // debugging message for formulae verification (uncomment to see the debug message on serial monitor) 
+// #define fomula_debug // debugging message for formulae verification (uncomment to see the debug message on serial monitor) 
 
 // push button variables
   int pushButtonPin = 3;
@@ -30,49 +37,58 @@
   float shaftRadius       = 7.88;   // value in mm
 
 // buzzer pin
-  int piezoPin = 7;
+  const int piezoPin = 7;
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
-const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+  const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
+  LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 // variables for display output
-String bpmLCD;
-String rvLCD;
-String ieLCD;
+  String bpmLCD;
+  String rvLCD;
+  String ieLCD;
 
 // declare pins for motor
-const int stepPin = 6;  //PUL -Pulse 6
-const int dirPin = 4;   //DIR -Direction 4
-const int enPin = 5;    //ENA -Enable 5
+  const int stepPin = 6;  //PUL -Pulse 6
+  const int dirPin = 4;   //DIR -Direction 4
+  const int enPin = 5;    //ENA -Enable 5
+
+// declare limit switch pin
+  const int limitSwitch = A5;
+  int bootCheck   = 0;
 
 // varibles for starting and looping position of motor
-int inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
+  int inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
 
 void setup() {
   // put your setup code here, to run once:
 
   // start serial
+  #ifdef fomula_debug
     Serial.begin(9600);
     while (!Serial) {
         ; // wait for serial port to connect. Needed for native USB
     }
+  #endif
   
   // setup display
     setupDisplay();
   
   // setup pin modes
     pinMode(pushButtonPin, INPUT_PULLUP);
+    pinMode(limitSwitch, INPUT);
   
   // setup for push button, use 3rd param as LOW, HIGH, CHANGE, FALLING, RISING
     attachInterrupt(digitalPinToInterrupt(pushButtonPin), pushButtonISR, CHANGE);
 
   // setup pins for motor, as outputs
-    pinMode(stepPin,OUTPUT); 
-    pinMode(dirPin,OUTPUT);
-    pinMode(enPin,OUTPUT);
-    //digitalWrite(enPin,LOW);
+    pinMode(stepPin, OUTPUT); 
+    pinMode(dirPin, OUTPUT);
+    pinMode(enPin, OUTPUT);
+
+  // boot position calibration protocol 
+    bootProtocol();
 }
 
 void loop() {
@@ -85,6 +101,20 @@ void loop() {
     
   // update display in real time only if ventilator is not running
     updateDisplay();
+}
+
+// boot protocol to zero position of stepper
+void bootProtocol() {
+  digitalWrite(enPin, LOW);
+  
+  if (bootCheck == 0){
+    while (digitalRead(limitSwitch) == 0){
+      runMotor(16, 2500, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+    }
+    bootCheck = 1;
+  }
+
+  digitalWrite(enPin, HIGH);
 }
 
 // push button controls
@@ -291,7 +321,7 @@ void updateDisplay(){
   }
 }
 
-// // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+// motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
 void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
     if (direction == true){
       digitalWrite(dirPin, HIGH);
