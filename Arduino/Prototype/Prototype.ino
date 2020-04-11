@@ -169,6 +169,9 @@ void stopVentilator(){
 
   // stop motor
     digitalWrite(enPin, HIGH);
+  
+  // unlock ventilator relatime update
+    lockDevice = false;
 }
 #pragma endregion
 
@@ -231,29 +234,34 @@ void setupDisplay(){
     lcd.print("BPM   RV%    I:E");
 }
 
-void updateDisplay(String bpmLCD, String rvLCD, String ieLCD){
-  bpmLCD = String(int(getPotInput("bpm_in")));
-  if (int(getPotInput("rv_in")) >= 100){
-    rvLCD  = "  " + String(int(getPotInput("rv_in")));
-  } else if (int(getPotInput("rv_in")) < 10) {
-    rvLCD  = "    " + String(int(getPotInput("rv_in")));
-  } else if (int(getPotInput("rv_in")) < 100){
-    rvLCD  = "   " + String(int(getPotInput("rv_in")));
-  }
+void updateDisplay(){
+  if (lockDevice == false){
+    String bpmLCD, rvLCD, ieLCD;
 
-  if (getPotInput("presets_in") == IE1to1){
-    ieLCD = "1:1";
-  } else if (getPotInput("presets_in") == IE1to2){
-    ieLCD = "1:2";
-  } else if (getPotInput("presets_in") == IE1to3){
-    ieLCD = "1:3";
-  } else if (getPotInput("presets_in") == IE2to1){
-    ieLCD = "2:1";
+    bpmLCD = String(int(getPotInput("bpm_in")));
+
+    if (int(getPotInput("rv_in")) >= 100){
+      rvLCD  = "  " + String(int(getPotInput("rv_in")));
+    } else if (int(getPotInput("rv_in")) < 10) {
+      rvLCD  = "    " + String(int(getPotInput("rv_in")));
+    } else if (int(getPotInput("rv_in")) < 100){
+      rvLCD  = "   " + String(int(getPotInput("rv_in")));
+    }
+
+    if (getPotInput("presets_in") == IE1to1){
+      ieLCD = "1:1";
+    } else if (getPotInput("presets_in") == IE1to2){
+      ieLCD = "1:2";
+    } else if (getPotInput("presets_in") == IE1to3){
+      ieLCD = "1:3";
+    } else if (getPotInput("presets_in") == IE2to1){
+      ieLCD = "2:1";
+    }
+    
+    lcd.setCursor(0,1);
+    String toPrint = " " + bpmLCD + " " + rvLCD + "    " + ieLCD;
+    lcd.print(toPrint);
   }
-  
-  lcd.setCursor(0,1);
-  String toPrint = " " + bpmLCD + " " + rvLCD + "    " + ieLCD;
-  lcd.print(toPrint);
 }
 
 // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
@@ -273,21 +281,21 @@ void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
 }
 #pragma endregion
 
+void realTimeVentilatorUpdate(){
+  if(ventStatus == 1 && lockDevice == false){
+    updateDisplay();
+    formulaeCalculation();
 
-void realTimeUpdate(){
-  
-
-
+    // run automated procedure for motor
+    // motor run clockwise
+    runMotor(inhalationMSteps, inhalationMS, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+    // motor run anti-clockwise
+    runMotor(exhalationMSteps, exhalationMS, false); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+  }
 }
 
 void lockVentilator(){
-  /*
-    inhalationMSteps = inhalationMotorMicroSteps;
-    inhalationMS     = inhalFacDelMicroSec;
-    exhalationMSteps = exhalationMotorMicroSteps;
-    exhalationMS     = exhalFacDelMicroSec;
-  */
-  if(ventStatus == 1){
+  if(ventStatus == 1 && lockDevice == false){
     lockDevice = true;
   }
 }
@@ -345,5 +353,9 @@ void formulaeCalculation(){
     Serial.println(exhalationMotorMicroSteps);
     Serial.println(exhalFacDelMicroSec);
   #endif
-}
 
+  inhalationMSteps = inhalationMotorMicroSteps;
+  inhalationMS     = inhalFacDelMicroSec;
+  exhalationMSteps = exhalationMotorMicroSteps;
+  exhalationMS     = exhalFacDelMicroSec;
+}
