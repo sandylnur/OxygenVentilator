@@ -1,3 +1,4 @@
+
 /*
  *  Date: 04/04/2020 (DD:MM:YYYY)
  *  Updated on: 08/04/2020
@@ -16,25 +17,10 @@
   volatile int buttonFlag;
   int debounceTime = 50;
 
-// ventilator variables
-  int ventStatus = 0;
-
-// presets
-  #define idle 0    // to be taken out if not necessary
-  #define IE1to2 2
-  #define IE1to3 3
-  #define IE1to1 1
-  #define IE2to1 0.5
-
 // potentiometer connected pins
   const int potOnePin   = A0; // potentiometer one
   const int potTwoPin   = A1; // potentiometer two
   const int potThreePin = A2; // potentiometer three
-
-// parameters for prototype 3, values to be calibrated and change accordingly
-  float actuationDistance = 50;     // value in mm
-  float pionRadius        = 29.75;  // value in mm
-  float shaftRadius       = 7.88;   // value in mm
 
 // buzzer pin
   const int piezoPin = 7;
@@ -44,22 +30,33 @@
   const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
   LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-// variables for display output
-  String bpmLCD;
-  String rvLCD;
-  String ieLCD;
-
 // declare pins for motor
   const int stepPin = 6;  //PUL -Pulse 6
   const int dirPin = 4;   //DIR -Direction 4
-  const int enPin = 5;    //ENA -Enable 5
+  const int enPin = 5;    //ENA -Enable 5 
 
 // declare limit switch pin
   const int limitSwitch = A5;
-  int bootCheck   = 0;
+
+// presets
+  #define idle 0    // to be taken out if not necessary
+  #define IE1to2 2
+  #define IE1to3 3
+  #define IE1to1 1
+  #define IE2to1 0.5
+
+// parameters for prototype 3, values to be calibrated and change accordingly
+  float actuationDistance = 50;     // value in mm
+  float pionRadius        = 29.75;  // value in mm
+  float shaftRadius       = 7.88;   // value in mm
 
 // varibles for starting and looping position of motor
   int inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
+
+// ventilator status variables
+  int bootCheck   = 0;
+  int ventStatus  = 0;
+  bool lockDevice = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -93,27 +90,25 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  // check if button is pressed
+  // check if push button is pressed
     checkButton();
 
-  // if ventilator started do
+  // if ventilator started and values can be updated in real time
+    realTimeVentilatorUpdate();
+
+  // if ventilator started and locked to set values
     ventilatorStarted();
-    
-  // update display in real time only if ventilator is not running
-    updateDisplay();
 }
 
 // boot protocol to zero position of stepper
 void bootProtocol() {
   digitalWrite(enPin, LOW);
-  
   if (bootCheck == 0){
     while (digitalRead(limitSwitch) == 0){
-      runMotor(16, 2500, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+      runMotor(16, 2500, false); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
     }
     bootCheck = 1;
   }
-
   digitalWrite(enPin, HIGH);
 }
 
@@ -154,13 +149,160 @@ void checkButton(){
 #pragma endregion
 
 // ventilator start, stop procedures
-#pragma region 
+#pragma region
 // function to start ventilator
 void startVentilator(){
   // write code to start ventilator
+  #ifdef fomula_debug
     Serial.println("Starting ventilator");
     buzzer();
+  #endif
     
+  // start motor
+    digitalWrite(enPin, LOW);
+}
+
+void stopVentilator(){
+  // write code to stop ventilator
+    Serial.println("Stopping ventilator");
+    buzzer();
+
+  // stop motor
+    digitalWrite(enPin, HIGH);
+}
+#pragma endregion
+
+// inputs and outputs procedures
+#pragma region 
+// input for potentiometer one, two, three
+float getPotInput(String potentiometer) {
+    if (potentiometer == "bpm_in") {
+      int potValueOne = analogRead(potOnePin);
+      int potMappedValueOne = map(potValueOne, 0, 1023, 10, 31); // return 10 to 30
+      return potMappedValueOne;
+    }
+
+    else if (potentiometer == "rv_in") {
+      int potValueTwo = analogRead(potTwoPin);
+      int potMappedValueTwo = map(potValueTwo, 0, 1023, 0, 101); // return 0 to 100
+      //float fractionOfMaxVol = potMappedValueTwo / 100;
+      return potMappedValueTwo;
+    }
+
+    else if (potentiometer == "presets_in") {
+      int potValueThree = analogRead(potThreePin);
+      int potMappedValueThree = map(potValueThree, 0, 1023, 0, 99);
+      int potDiscreteValue = potMappedValueThree / 20; // divide by 25 if only 4 presets being used
+      
+      // enter switch case
+      switch(potDiscreteValue)
+      {
+        case 0:
+          return IE1to1; // to be removed if only 4 presets being used!!
+          break;
+        case 1:
+          return IE1to1;
+          break;
+        case 2:
+          return IE1to2;
+          break;
+        case 3:
+          return IE1to3;
+          break;
+        case 4:
+          return IE2to1;
+          break;
+      }
+    }
+}
+
+// output function to call buzzer
+void buzzer(){
+    tone(piezoPin, 1000, 500);
+}
+
+// output function to display
+void setupDisplay(){
+  // set up the LCD's number of columns and rows:
+    lcd.begin(16, 2);
+    
+  // Print a message to the LCD.
+    lcd.setCursor(0,0) ;
+    lcd.print("BPM   RV%    I:E");
+}
+
+void updateDisplay(String bpmLCD, String rvLCD, String ieLCD){
+  bpmLCD = String(int(getPotInput("bpm_in")));
+  if (int(getPotInput("rv_in")) >= 100){
+    rvLCD  = "  " + String(int(getPotInput("rv_in")));
+  } else if (int(getPotInput("rv_in")) < 10) {
+    rvLCD  = "    " + String(int(getPotInput("rv_in")));
+  } else if (int(getPotInput("rv_in")) < 100){
+    rvLCD  = "   " + String(int(getPotInput("rv_in")));
+  }
+
+  if (getPotInput("presets_in") == IE1to1){
+    ieLCD = "1:1";
+  } else if (getPotInput("presets_in") == IE1to2){
+    ieLCD = "1:2";
+  } else if (getPotInput("presets_in") == IE1to3){
+    ieLCD = "1:3";
+  } else if (getPotInput("presets_in") == IE2to1){
+    ieLCD = "2:1";
+  }
+  
+  lcd.setCursor(0,1);
+  String toPrint = " " + bpmLCD + " " + rvLCD + "    " + ieLCD;
+  lcd.print(toPrint);
+}
+
+// motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
+    if (direction == true){
+      digitalWrite(dirPin, HIGH);
+    } else if (direction == false){
+      digitalWrite(dirPin, LOW);
+    }
+    
+    for(int x = 0; x < motorMicroSteps; x++){
+      digitalWrite(stepPin, HIGH); 
+      delayMicroseconds(motorMicroSeconds);
+      digitalWrite(stepPin, LOW);
+      delayMicroseconds(motorMicroSeconds);
+    }
+}
+#pragma endregion
+
+
+void realTimeUpdate(){
+  
+
+
+}
+
+void lockVentilator(){
+  /*
+    inhalationMSteps = inhalationMotorMicroSteps;
+    inhalationMS     = inhalFacDelMicroSec;
+    exhalationMSteps = exhalationMotorMicroSteps;
+    exhalationMS     = exhalFacDelMicroSec;
+  */
+  if(ventStatus == 1){
+    lockDevice = true;
+  }
+}
+
+void ventilatorStarted(){
+  if (ventStatus == 1 && lockDevice == true){
+    // run automated procedure for motor
+    // motor run clockwise
+    runMotor(inhalationMSteps, inhalationMS, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+    // motor run anti-clockwise
+    runMotor(exhalationMSteps, exhalationMS, false); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+  }
+}
+
+void formulaeCalculation(){
   // inhalation, clockwise
     float repirationDuration        = 60 / getPotInput("bpm_in");
     float inhalationTime            = repirationDuration / (1 + getPotInput("presets_in"));
@@ -203,137 +345,5 @@ void startVentilator(){
     Serial.println(exhalationMotorMicroSteps);
     Serial.println(exhalFacDelMicroSec);
   #endif
-
-  inhalationMSteps = inhalationMotorMicroSteps;
-  inhalationMS     = inhalFacDelMicroSec;
-  exhalationMSteps = exhalationMotorMicroSteps;
-  exhalationMS     = exhalFacDelMicroSec;
-
-  // start motor
-    digitalWrite(enPin, LOW);
 }
 
-void ventilatorStarted(){
-  if (ventStatus == 1){
-    // run automated procedure for motor
-    // motor run clockwise
-    runMotor(inhalationMSteps, inhalationMS, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
-    // motor run anti-clockwise
-    runMotor(exhalationMSteps, exhalationMS, false); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
-  }
-}
-
-void stopVentilator(){
-  // write code to stop ventilator
-    Serial.println("Stopping ventilator");
-    buzzer();
-    // stop motor
-    digitalWrite(enPin, HIGH);
-}
-#pragma endregion
-
-// inputs and outputs procedures
-#pragma region 
-// input for potentiometer one, two, three
-float getPotInput(String potentiometer) {
-    if (potentiometer == "bpm_in") {
-      int potValueOne = analogRead(potOnePin);
-      int potMappedValueOne = map(potValueOne, 0, 1023, 10, 31); // return 10 to 30
-      return potMappedValueOne;
-    }
-
-    else if (potentiometer == "rv_in") {
-      int potValueTwo = analogRead(potTwoPin);
-      int potMappedValueTwo = map(potValueTwo, 0, 1023, 0, 101); // return 0 to 100
-      //float fractionOfMaxVol = potMappedValueTwo / 100;
-      return potMappedValueTwo;
-    }
-
-    else if (potentiometer == "presets_in") {
-      int potValueThree = analogRead(potThreePin);
-      int potMappedValueThree = map(potValueThree, 0, 1023, 0, 100);
-      int potDiscreteValue = potMappedValueThree / 20;
-      
-      // enter switch case
-      switch(potDiscreteValue)
-      {
-        case 0:
-          return idle;
-          break;
-        case 1:
-          return IE1to1;
-          break;
-        case 2:
-          return IE1to2;
-          break;
-        case 3:
-          return IE1to3;
-          break;
-        case 4:
-          return IE2to1;
-          break;
-        default:
-          // Serial.println("Potentiometer 3, Error!");
-          break;
-      }
-    }
-}
-
-// output function to call buzzer
-void buzzer(){
-    tone(piezoPin, 1000, 500);
-}
-
-// output function to display
-void setupDisplay(){
-  // set up the LCD's number of columns and rows:
-    lcd.begin(16, 2);
-    
-  // Print a message to the LCD.
-    lcd.setCursor(0,0) ;
-    lcd.print("BPM   RV%    I:E");
-}
-
-void updateDisplay(){
-  if (ventStatus == 0){
-    bpmLCD = String(int(getPotInput("bpm_in")));
-    if (int(getPotInput("rv_in")) >= 100){
-      rvLCD  = "  " + String(int(getPotInput("rv_in")));
-    } else if (int(getPotInput("rv_in")) < 10) {
-      rvLCD  = "    " + String(int(getPotInput("rv_in")));
-    } else if (int(getPotInput("rv_in")) < 100){
-      rvLCD  = "   " + String(int(getPotInput("rv_in")));
-    }
-
-    if (getPotInput("presets_in") == IE1to1){
-      ieLCD = "1:1";
-    } else if (getPotInput("presets_in") == IE1to2){
-      ieLCD = "1:2";
-    } else if (getPotInput("presets_in") == IE1to3){
-      ieLCD = "1:3";
-    } else if (getPotInput("presets_in") == IE2to1){
-      ieLCD = "2:1";
-    }
-    
-    lcd.setCursor(0,1);
-    String toPrint = " " + bpmLCD + " " + rvLCD + "    " + ieLCD;
-    lcd.print(toPrint);
-  }
-}
-
-// motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
-void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
-    if (direction == true){
-      digitalWrite(dirPin, HIGH);
-    } else if (direction == false){
-      digitalWrite(dirPin, LOW);
-    }
-    
-    for(int x = 0; x < motorMicroSteps; x++){
-      digitalWrite(stepPin, HIGH); 
-      delayMicroseconds(motorMicroSeconds);
-      digitalWrite(stepPin, LOW);
-      delayMicroseconds(motorMicroSeconds);
-    }
-}
-#pragma endregion
