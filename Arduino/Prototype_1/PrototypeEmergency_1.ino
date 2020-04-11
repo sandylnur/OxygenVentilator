@@ -1,11 +1,12 @@
-// Version 0.2
+// Version 0.3
+// Latest Date Modified: 11/04/2020
 // defining all the inputs
 const int Emergencybutton = 2;
 const int ventEnabled = A1;
 const int limitSwitch = A3;
 
 //defining all the outputs
-int LED = 8;
+int LED = 11; //internal LED of Lilpad
 int relay1 = 9;
 int buzzer = 10;
 
@@ -30,41 +31,56 @@ void setup()
     pinMode(relay1, OUTPUT);
     pinMode(LED, OUTPUT);
     digitalWrite(relay1, HIGH);
+    digitalWrite(LED, HIGH);
 }
 
 //Loop
-
 void loop()
 {
+    //Start counter and signal reset while the ventilator is running
     if (ventEnabled == 0)
-    {                            //only execute while the ventilator is running
-        counterStart = millis(); //Start counter
-        digitalWrite(LED, HIGH);
-        counterreset = true; //Counter has been reset
-
+    {
+        counterStart = millis();
+        counterreset = true;
+        //While the limitSwitch is Open, piston is moving -- Measure movement time and set counter
         while (limitSwitch == 0)
-        {                                         //While the limitSwitch is Open, piston is moving
-            timeMoving = millis() - counterStart; //Measure Moving Time and compare to 7000ms
-            counterreset = false;                 //Counter has been used for one check
+        {
+            timeMoving = millis() - counterStart;
+            counterreset = false;
+            //If movement >= 7 sec activate emergency circuit
             if (timeMoving >= 7000)
             {
-                digitalWrite(buzzer, HIGH); //If condition is satisfied, activate emergency circuit
+                digitalWrite(buzzer, HIGH);
+                while (timeMoving >= 7000)
+                {
+                    digitalWrite(LED, !digitalRead(LED));
+                    delay(1000);
+                }
             }
+            //Perform periodic check of vent status and reset if vent disabled
             if (ventEnabled == 1)
-            { //Perform periodic check of vent status and reset if turned off
+            {
                 break;
             }
         }
 
+        //While limitSwitch is Closed and counter hasn't been used already, piston is at rest --> Measure time at rest
         while (limitSwitch == 1 && counterreset == true)
-        {                                         //While the limitSwitch is Closed, piston is at rest
-            timeAtrest = millis() - counterStart; //Measure time at rest and compare to 2000ms
+        {
+            timeAtrest = millis() - counterStart;
+            //If time at rest >= 2s, activate emergency circuit
             if (timeAtrest >= 2000)
             {
-                digitalWrite(buzzer, HIGH); //If condition satisfied, activate emergency circuit
+                digitalWrite(buzzer, HIGH);
+                while (timeAtrest >= 2000)
+                {
+                    digitalWrite(LED, !digitalRead(LED));
+                    delay(2000);
+                }
             }
+            //Perform periodic check of vent status and reset if if vent disabled
             if (ventEnabled == 1)
-            { //Perform periodic check of vent status and reset if turned off
+            {
                 digitalWrite(LED, LOW);
                 break;
             }
@@ -72,9 +88,14 @@ void loop()
     }
 }
 
-//Emergency Interrupt Service Routine should turn off the arduino cct using Relay 1
+//Emergency Interrupt Service Routine should turn off the arduino cct using Relay 1 and activate emergency circuit
 void emergencyISR()
 {
     digitalWrite(relay1, LOW);
     digitalWrite(buzzer, HIGH);
+    While(Emergencybutton == 1)
+    {
+        digitalWrite(LED, !digitalRead(LED));
+        delay(250);
+    }
 }
