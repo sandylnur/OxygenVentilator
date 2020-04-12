@@ -2,5 +2,5 @@
     "board": "arduino:avr:mega",
     "configuration": "cpu=atmega2560",
     "port": "COM6",
-    "sketch": "Arduino\\1_Arduino-Main\\1_Arduino-Main.ino"
+    "sketch": "Arduino\\Prototype_1\\PrototypeEmergency_1.ino"
 }
