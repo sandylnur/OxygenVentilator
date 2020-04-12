@@ -51,8 +51,15 @@ void setup() {
 void loop() {
   if (emergencyToggle == true || emergencyMotor == true){
     digitalWrite(relaySwitch, LOW);
-    digitalWrite(buzzer, HIGH);
+     digitalWrite(buzzer, HIGH);
   }
+
+  /*
+  if (emergencyMotor == true){
+    //digitalWrite(relaySwitch, LOW);
+    digitalWrite(buzzer, HIGH);
+  } 
+  */
   
   if (digitalRead(emergencyButton) == HIGH && emergencyToggle == true){
     digitalWrite(relaySwitch, HIGH);
@@ -64,11 +71,11 @@ void loop() {
   if (digitalRead(ventEnablePin) == LOW && ventStatus == false){
     ventStatus = true;
     digitalWrite(pushLed, HIGH);
-    //counterLastPress = millis();
+    counterLastPress = millis();
     // Serial.println("Ventilator Operational");
   } else if (digitalRead(ventEnablePin) == HIGH && ventStatus == true) {
     ventStatus = false;
-    digitalWrite(pushLed, LOW);
+   digitalWrite(pushLed, LOW);
     // Serial.println("Ventilator Not Operational"); 
   }
 
@@ -103,8 +110,6 @@ void loop() {
           emergencyMotor = true;
         }
       }
-
-      
     }
   }
 }

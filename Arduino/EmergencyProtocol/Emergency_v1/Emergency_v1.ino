@@ -6,7 +6,7 @@ const int ventEnabled = A1;
 const int limitSwitch = 3;
 
 //defining all the outputs
-int LED = 13; //internal LED of Lilypad
+int LED = 8; //internal LED of Lilypad
 int relay1 = 9;
 int buzzer = 10;
 
@@ -37,7 +37,7 @@ void setup()
     pinMode(relay1, OUTPUT);
     pinMode(LED, OUTPUT);
     digitalWrite(relay1, HIGH);
-    digitalWrite(LED, HIGH);
+    digitalWrite(LED, LOW);
         Serial.begin(9600);
     while (!Serial) {
         ; // wait for serial port to connect. Needed for native USB
@@ -49,7 +49,7 @@ void setup()
 void loop()
 {
     //Start counter and signal reset while the ventilator is running
-    Serial.println(digitalRead(ventEnabled));
+    Serial.println(digitalRead(Emergencybutton));
     if (digitalRead(Emergencybutton) == 1) {
       emergencyToggle == false;
       digitalWrite(relay1,HIGH);
@@ -60,9 +60,11 @@ void loop()
     {
         counterStart = millis();
         counterBreak = false;
+        digitalWrite(LED,HIGH);
         //While the limitSwitch is Open, piston is moving -- Measure movement time and set counter
         if (digitalRead(limitSwitch) == 0) {
           counter1reset = false;
+           
           }
         while (digitalRead(limitSwitch) == 0 && counter1reset == false)
         {
@@ -73,7 +75,12 @@ void loop()
             //If movement >= 7 sec activate emergency circuit
             if (timeMoving >= 7000)
             {
+                digitalWrite(relay1,LOW);
                 digitalWrite(buzzer, HIGH);
+                if (digitalRead(Emergencybutton) == 1)
+                  {
+                    break;
+                  }
                 Serial.println("After, Moving: " + String(timeMoving));
               /**  while (timeMoving >= 7000)
                 {
@@ -98,7 +105,14 @@ void loop()
             if (timeAtrest >= 2000)
             {
               Serial.println("After Stop: " + String(timeAtrest));
+                digitalWrite(relay1,LOW);
                 digitalWrite(buzzer, HIGH);
+
+                if (digitalRead(Emergencybutton) == 1)
+                  {
+                    break;
+                  }
+                    
                 /*while (timeAtrest >= 2000)
                 {
                     digitalWrite(LED, !digitalRead(LED));
@@ -108,10 +122,14 @@ void loop()
             //Perform periodic check of vent status and reset if if vent disabled
             if (digitalRead(ventEnabled) == 1)
             {
-               // digitalWrite(LED, LOW);
+               
                 break;
             }
         }
+    }
+
+    if (digitalRead(ventEnabled) == 1){
+      digitalWrite(LED, LOW);
     }
 }
 
