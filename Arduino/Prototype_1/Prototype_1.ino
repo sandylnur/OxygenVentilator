@@ -109,7 +109,7 @@ void bootProtocol() {
   
   if (bootCheck == 0){
     while (digitalRead(limitSwitch) == 0){
-      runMotor(16, 2500, true); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+      runMotor(16, 2500, false); // motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
     }
     bootCheck = 1;
   }
@@ -251,14 +251,14 @@ float getPotInput(String potentiometer) {
 
     else if (potentiometer == "presets_in") {
       int potValueThree = analogRead(potThreePin);
-      int potMappedValueThree = map(potValueThree, 0, 1023, 0, 100);
+      int potMappedValueThree = map(potValueThree, 0, 1023, 0, 99);
       int potDiscreteValue = potMappedValueThree / 20;
       
       // enter switch case
       switch(potDiscreteValue)
       {
         case 0:
-          return idle;
+          return IE1to1;
           break;
         case 1:
           return IE1to1;
