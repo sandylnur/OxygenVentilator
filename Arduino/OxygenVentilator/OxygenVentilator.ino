@@ -53,6 +53,7 @@
   const int stepPin = 6;  //PUL -Pulse 6
   const int dirPin = 4;   //DIR -Direction 4
   const int enPin = 5;    //ENA -Enable 5
+  const int stepsPerRevolution = 400; // steps for motor-revolution, depending on motor model
 
 // declare limit switch pin
   const int limitSwitch = A5;
@@ -165,7 +166,7 @@ void startVentilator(){
     float repirationDuration        = 60 / getPotInput("bpm_in");
     float inhalationTime            = repirationDuration / (1 + getPotInput("presets_in"));
     float inhalationRPM             = (actuationDistance * getPotInput("rv_in") * 60 * 7) / (inhalationTime * 44 * (pionRadius - shaftRadius) * (100));
-    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * 400) / 60; // 400 -> stepsPerRevolution
+    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * stepsPerRevolution) / 60; // 400 -> 
 
   // exhalation, anti-clockwise
     float exhalationRPM             = inhalationRPM / getPotInput("presets_in");
