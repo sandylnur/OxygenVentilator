@@ -32,7 +32,7 @@
   const int potThreePin = A2; // potentiometer three
 
 // parameters for prototype 3, values to be calibrated and change accordingly
-  float actuationDistance = 50;     // value in mm
+  float actuationDistance = 70;     // value in mm
   float pionRadius        = 29.75;  // value in mm
   float shaftRadius       = 7.88;   // value in mm
 
@@ -165,7 +165,7 @@ void startVentilator(){
     float repirationDuration        = 60 / getPotInput("bpm_in");
     float inhalationTime            = repirationDuration / (1 + getPotInput("presets_in"));
     float inhalationRPM             = (actuationDistance * getPotInput("rv_in") * 60 * 7) / (inhalationTime * 44 * (pionRadius - shaftRadius) * (100));
-    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * 200) / 60; // 200 -> stepsPerRevolution
+    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * 400) / 60; // 400 -> stepsPerRevolution
 
   // exhalation, anti-clockwise
     float exhalationRPM             = inhalationRPM / getPotInput("presets_in");
@@ -329,7 +329,7 @@ void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
       digitalWrite(dirPin, LOW);
     }
     
-    for(int x = 0; x < motorMicroSteps; x++){
+    for(int x = 0; x < (motorMicroSteps); x++){
       digitalWrite(stepPin, HIGH); 
       delayMicroseconds(motorMicroSeconds);
       digitalWrite(stepPin, LOW);
