@@ -5,7 +5,8 @@
  * 
  */
 
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
 
 // #define fomula_debug // debugging message for formulae verification (uncomment to see the debug message on serial monitor) 
 
@@ -41,8 +42,9 @@
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
-  const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
-  LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+// const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
+// LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+  LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
 // variables for display output
   String bpmLCD;
@@ -56,8 +58,8 @@
   const int stepsPerRevolution = 400; // steps for motor-revolution, depending on motor model
 
 // declare limit switch pin
-  const int limitSwitch = A5;
-  int bootCheck   = 0;
+  const int limitSwitch = 8;
+  int bootCheck         = 0;
 
 // varibles for starting and looping position of motor
   int inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
@@ -288,7 +290,9 @@ void buzzer(){
 // output function to display
 void setupDisplay(){
   // set up the LCD's number of columns and rows:
-    lcd.begin(16, 2);
+  // lcd.begin(16, 2);
+      lcd.init();
+      lcd.backlight();
     
   // Print a message to the LCD.
     lcd.setCursor(0,0) ;
