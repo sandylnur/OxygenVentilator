@@ -28,7 +28,7 @@ void setup() {
   // put your setup code here, to run once:
   // emergency button
     pinMode(emergencyButton, INPUT);
-    attachInterrupt(digitalPinToInterrupt(emergencyButton), emergencyISR, FALLING);
+    attachInterrupt(digitalPinToInterrupt(emergencyButton), emergencyISR, RISING);
 
   // limit switch
     pinMode(limitSwitch, INPUT);
@@ -80,7 +80,7 @@ void loop() {
   }
 
   if (ventStatus == true && emergencyMotor == false) {
-    if((millis() - lastPress) > debounceTime && buttonFlag){ 
+    if((millis() - lastPress) > debounceTime && buttonFlag){
         lastPress = millis();
         if(digitalRead(limitSwitch) == 0){ // && lastButtonState == 1
           //Serial.println("Tap");

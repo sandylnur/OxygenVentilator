@@ -32,13 +32,17 @@
   const int potTwoPin   = A1; // potentiometer two
   const int potThreePin = A2; // potentiometer three
 
+// led light status pin
+  const int ledPin = 13;
+
 // parameters for prototype 3, values to be calibrated and change accordingly
-  float actuationDistance = 70;     // value in mm
+  float actuationDistance = 50;     // value in mm
   float pionRadius        = 29.75;  // value in mm
   float shaftRadius       = 7.88;   // value in mm
+  const int stepsPerRevolution = 200;    
 
 // buzzer pin
-  const int piezoPin = 7;
+  const int piezoPin = 5;
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -52,12 +56,12 @@
   String ieLCD;
 
 // declare pins for motor
-  const int stepPin = 6;  //PUL -Pulse 6
-  const int dirPin = 4;   //DIR -Direction 4
-  const int enPin = 5;    //ENA -Enable 5
+  const int stepPin = 10; //PUL -Pulse 10
+  const int dirPin  = 9;  //DIR -Direction 9
+  const int enPin   = 8;  //ENA -Enable 8
 
 // declare limit switch pin
-  const int limitSwitch = 8;
+  const int limitSwitch = 2;
   int bootCheck         = 0;
 
 // varibles for starting and looping position of motor
@@ -80,6 +84,7 @@ void setup() {
   // setup pin modes
     pinMode(pushButtonPin, INPUT_PULLUP);
     pinMode(limitSwitch, INPUT);
+    pinMode(ledPin, OUTPUT);
   
   // setup for push button, use 3rd param as LOW, HIGH, CHANGE, FALLING, RISING
     attachInterrupt(digitalPinToInterrupt(pushButtonPin), pushButtonISR, CHANGE);
@@ -162,12 +167,15 @@ void startVentilator(){
   // write code to start ventilator
     Serial.println("Starting ventilator");
     buzzer();
+
+  // set led status ON
+    digitalWrite(ledPin, HIGH);
     
   // inhalation, clockwise
     float repirationDuration        = 60 / getPotInput("bpm_in");
     float inhalationTime            = repirationDuration / (1 + getPotInput("presets_in"));
     float inhalationRPM             = (actuationDistance * getPotInput("rv_in") * 60 * 7) / (inhalationTime * 44 * (pionRadius - shaftRadius) * (100));
-    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * 400) / 60; // 400 -> stepsPerRevolution
+    float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * stepsPerRevolution) / 60; // 400 -> stepsPerRevolution
 
   // exhalation, anti-clockwise
     float exhalationRPM             = inhalationRPM / getPotInput("presets_in");
@@ -229,7 +237,11 @@ void stopVentilator(){
   // write code to stop ventilator
     Serial.println("Stopping ventilator");
     buzzer();
-    // stop motor
+
+  // set led status off
+    digitalWrite(ledPin, LOW);
+
+  // stop motor
     digitalWrite(enPin, HIGH);
 }
 #pragma endregion
