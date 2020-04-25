@@ -1,9 +1,10 @@
-/*
- *  Date: 04/04/2020 (DD:MM:YYYY)
- *  Updated on: 21/04/2020
- *  OxygenVentilator Project - Rack and Pinion
- * 
- */
+/**
+ * OxygenVentilator Project - Rack and Pinion
+ * Version          : 0.4
+ * Author           : Project Volunteers
+ * Date Created     : 04/04/2020 (DD :MM :YYYY)
+ * Date Modified    : 25/04/2020
+ **/
 
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -34,6 +35,7 @@
 
 // led light status pin
   const int ledPin = 13;
+  const int sendSignal = 11;
 
 // parameters for prototype 3, values to be calibrated and change accordingly
   float actuationDistance = 50;     // value in mm
@@ -85,6 +87,7 @@ void setup() {
     pinMode(pushButtonPin, INPUT_PULLUP);
     pinMode(limitSwitch, INPUT);
     pinMode(ledPin, OUTPUT);
+    pinMode(sendSignal, OUTPUT);
   
   // setup for push button, use 3rd param as LOW, HIGH, CHANGE, FALLING, RISING
     attachInterrupt(digitalPinToInterrupt(pushButtonPin), pushButtonISR, CHANGE);
@@ -113,6 +116,7 @@ void loop() {
 // boot protocol to zero position of stepper
 void bootProtocol() {
   digitalWrite(enPin, LOW);
+  digitalWrite(sendSignal, LOW);
   
   if (bootCheck == 0){
     while (digitalRead(limitSwitch) == 0){
@@ -122,6 +126,7 @@ void bootProtocol() {
   }
 
   digitalWrite(enPin, HIGH);
+  digitalWrite(sendSignal, HIGH);
 }
 
 // push button controls
@@ -221,6 +226,7 @@ void startVentilator(){
 
   // start motor
     digitalWrite(enPin, LOW);
+    digitalWrite(sendSignal, LOW);
 }
 
 void ventilatorStarted(){
@@ -243,6 +249,7 @@ void stopVentilator(){
 
   // stop motor
     digitalWrite(enPin, HIGH);
+    digitalWrite(sendSignal, HIGH);
 }
 #pragma endregion
 
@@ -337,19 +344,43 @@ void updateDisplay(){
   }
 }
 
-// motorMicroSteps, motorMicroSeconds, Clock-Wise -> TRUE, Anti-Clock-Wise -> FALSE
+// motorMicroSteps, motorMicroSeconds, Clock-Wise -> FALSE, Anti-Clock-Wise -> TRUE
 void runMotor(int motorMicroSteps, int motorMicroSeconds, bool direction) {
     if (direction == true){
       digitalWrite(dirPin, HIGH);
     } else if (direction == false){
       digitalWrite(dirPin, LOW);
     }
-    
-    for(int x = 0; x < (motorMicroSteps); x++){
-      digitalWrite(stepPin, HIGH); 
-      delayMicroseconds(motorMicroSeconds);
-      digitalWrite(stepPin, LOW);
-      delayMicroseconds(motorMicroSeconds);
+
+    if (bootCheck == 1){
+      if (direction == true) {
+        // inhalation normally
+        for(int x = 0; x < (motorMicroSteps); x++){
+          digitalWrite(stepPin, HIGH); 
+          delayMicroseconds(motorMicroSeconds);
+          digitalWrite(stepPin, LOW);
+          delayMicroseconds(motorMicroSeconds);
+        }
+      } else if (direction == false){
+        // exhalation normally then zero-in
+          for(int x = 0; x < (motorMicroSteps); x++){
+            digitalWrite(stepPin, HIGH); 
+            delayMicroseconds(motorMicroSeconds);
+            digitalWrite(stepPin, LOW);
+            delayMicroseconds(motorMicroSeconds);
+          }
+          while (digitalRead(limitSwitch) == 0){
+            runMotor(1, motorMicroSeconds, false);
+          }
+      }
+    } else {
+        // boot protocol motor function
+          for(int x = 0; x < (motorMicroSteps); x++){
+            digitalWrite(stepPin, HIGH); 
+            delayMicroseconds(motorMicroSeconds);
+            digitalWrite(stepPin, LOW);
+            delayMicroseconds(motorMicroSeconds);
+          }
     }
 }
 #pragma endregion

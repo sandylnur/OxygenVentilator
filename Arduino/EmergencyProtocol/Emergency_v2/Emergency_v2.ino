@@ -1,124 +1,157 @@
-// Emergency Protocol Code Version 0.1, by Sandyl
-// Latest Date Modified: 12/04/2020
-// connected pins
-const int emergencyButton = 2;
-const int limitSwitch     = 3;
-const int pushLed         = 8;
-const int relaySwitch     = 9;
-const int buzzer          = 10;
+/**
+ * Emergency Protocol Code
+ * Version          : 0.3
+ * Author           : Sandyl Nursigadoo, Tavish Hookoom
+ * Date Created     : 12/04/2020 (DD :MM :YYYY)
+ * Date Modified    : 25/04/2020
+ **/
 
-int ventEnablePin = A1;
+#define Debug // debugging message for emergency verification (uncomment to see the debug message on serial monitor)
 
-bool emergencyToggle = false;
-bool emergencyMotor  = false;
+// connected arduino pins
+const int emergencyButtonPin = 2;
+const int limitSwitchPin     = 3;
+const int relaySwitchPin     = 9;
+const int buzzerPin          = 10;
+const int ventEnablePin      = A0;
+
+// flag for status of emergency scenario
+bool initializationCheck    = false;
 bool ventStatus      = false;
+bool emergencyMotor  = false;
+bool emergencyToggle = false;
 
-const int timeCalibration = 7000;
-unsigned long counterStart, counterPress, counterLastPress;
-int counterLimitSwitch = 1;
-int counterLastLimitSwitch = 0;
+// calibration time for maximum time for limit switch to be trigger
+const int timeCalibration       = 7000;   // maximum inhalation plus exhalation time
+const int bootTimeCalibration   = 14000;  // maximum zero-in time
+unsigned long counterLastPress;
 
-// debounces
-int lastButtonState = 1;
-long unsigned int lastPress;
-volatile int buttonFlag;
-int debounceTime = 50;
+// flag for if limit switch was toggled
+bool limitSwitchFlag;
 
 void setup() {
   // put your setup code here, to run once:
   // emergency button
-    pinMode(emergencyButton, INPUT);
-    attachInterrupt(digitalPinToInterrupt(emergencyButton), emergencyISR, RISING);
+  pinMode(emergencyButtonPin, INPUT);
+  attachInterrupt(digitalPinToInterrupt(emergencyButtonPin), EmergencyISR, FALLING);
 
   // limit switch
-    pinMode(limitSwitch, INPUT);
-    attachInterrupt(digitalPinToInterrupt(limitSwitch), limitSwitchISR, RISING);
+  pinMode(limitSwitchPin, INPUT);
+  attachInterrupt(digitalPinToInterrupt(limitSwitchPin), LimitSwitchISR, CHANGE);
 
   // relay switch
-    pinMode(relaySwitch, OUTPUT);
-    digitalWrite(relaySwitch, HIGH);
+  pinMode(relaySwitchPin, OUTPUT);
+  digitalWrite(relaySwitchPin, HIGH);
 
-    pinMode(ventEnablePin, INPUT);
-    pinMode(pushLed, OUTPUT);
-    pinMode(buzzer, OUTPUT);
+  // buzzer
+  pinMode(buzzerPin, OUTPUT);
 
+  // ventilator status from mainboard
+  pinMode(ventEnablePin, INPUT);
+
+  #ifdef Debug
     Serial.begin(9600);
     while (!Serial) {
-        ; // wait for serial port to connect. Needed for native USB
+      ; // wait for serial port to connect. Needed for native USB
     }
+  #endif
 }
 
 void loop() {
-  if (emergencyToggle == true || emergencyMotor == true){
-    digitalWrite(relaySwitch, LOW);
-     digitalWrite(buzzer, HIGH);
-  }
-
-  /*
-  if (emergencyMotor == true){
-    //digitalWrite(relaySwitch, LOW);
-    digitalWrite(buzzer, HIGH);
-  } 
-  */
-  
-  if (digitalRead(emergencyButton) == HIGH && emergencyToggle == true){
-    digitalWrite(relaySwitch, HIGH);
-    digitalWrite(buzzer, LOW);
-    emergencyToggle = false;
-    emergencyMotor = false;
-  }
-
-  if (digitalRead(ventEnablePin) == LOW && ventStatus == false){
-    ventStatus = true;
-    digitalWrite(pushLed, HIGH);
-    counterLastPress = millis();
-    // Serial.println("Ventilator Operational");
-  } else if (digitalRead(ventEnablePin) == HIGH && ventStatus == true) {
-    ventStatus = false;
-   digitalWrite(pushLed, LOW);
-    // Serial.println("Ventilator Not Operational"); 
-  }
-
-  if (ventStatus == true && emergencyMotor == false) {
-    if((millis() - lastPress) > debounceTime && buttonFlag){
-        lastPress = millis();
-        if(digitalRead(limitSwitch) == 0){ // && lastButtonState == 1
-          //Serial.println("Tap");
-          counterLimitSwitch++;
-          lastButtonState = 0;
-        }
-        
-        else if(digitalRead(limitSwitch) == 1 && lastButtonState == 0){
-        lastButtonState = 1;
-        }
-        buttonFlag = 0;
+  #pragma Emergency Protocol
+    if (emergencyToggle == true || emergencyMotor == true) {
+      // whenever emergency button or and error with limit switch identifying an issue on motor
+      digitalWrite(relaySwitchPin, LOW);
+      digitalWrite(buzzerPin, HIGH);
+      #ifdef Debug
+        Serial.println("Emergency Occured");
+      #endif
     }
+
+    if (digitalRead(emergencyButtonPin) == HIGH && emergencyToggle == true) {
+      // reset when evergency button is released
+      digitalWrite(relaySwitchPin, HIGH);
+      digitalWrite(buzzerPin, LOW);
+      emergencyToggle = false;
+      emergencyMotor = false;
+      ventStatus = false;
+      initializationCheck = false;
+    }
+  #pragma endregion
+
+  if (initializationCheck == false) {    
+    #ifdef Debug
+      Serial.println("Initializing Procedure Started");
+    #endif
     
-    counterPress = millis();
-    int pinState = digitalRead(limitSwitch);
-    
-    if (counterPress - counterLastPress >= timeCalibration) { // countdown for timeCalibration inside loop
-      counterLastPress = counterPress;
-      if (pinState == HIGH){
-          Serial.println("Error!!");
+    while(digitalRead(ventEnablePin) == LOW) {
+      CheckMotorRunning(bootTimeCalibration);
+      if(emergencyMotor == true){
+        break;
+      }
+    } 
+    initializationCheck = true;
+    #ifdef Debug
+      Serial.println("Initializing Procedure Completed");
+    #endif
+  }
+
+  if (initializationCheck == true) {
+    CheckMotorRunning(timeCalibration);
+  }
+
+}
+
+void CheckMotorRunning(int _timeCheck) {
+    if (digitalRead(ventEnablePin) == LOW && ventStatus == false) {
+      ventStatus = true;
+      counterLastPress = millis();
+      #ifdef Debug
+        Serial.println("Ventilator Operational");
+      #endif
+    } else if (digitalRead(ventEnablePin) == HIGH && ventStatus == true) {
+      ventStatus = false;
+      #ifdef Debug
+        Serial.println("Ventilator Not Operational");
+      #endif
+    }
+
+    if (ventStatus == true && emergencyMotor == false) {
+      if (limitSwitchFlag == 1) {
+        #ifdef Debug
+          Serial.println("Tap");
+        #endif
+        counterLastPress = millis();
+        limitSwitchFlag = 0;
+      }
+
+      int pinState = digitalRead(limitSwitchPin);
+
+      if (millis() - counterLastPress >= _timeCheck) {
+
+        Serial.println(millis() - counterLastPress);
+        emergencyMotor = true;
+        if (pinState == HIGH) {
+          #ifdef Debug
+            Serial.println("Error! Constant High!!");
+          #endif
           emergencyMotor = true;
-      } else {
-        if (counterLimitSwitch > counterLastLimitSwitch){
-          counterLastLimitSwitch = counterLimitSwitch;
         } else {
-          Serial.println("Error!!");
+          #ifdef Debug
+            Serial.println("Error! Missed Limit Switch!!");
+          #endif
           emergencyMotor = true;
         }
       }
     }
-  }
 }
 
-// Emergency Interrupt Service Routine should turn off the arduino cct using Relay 1 and activate emergency circuit
-void emergencyISR() {
-    emergencyToggle = true;
+void EmergencyISR() {
+  digitalWrite(relaySwitchPin, LOW);
+  digitalWrite(buzzerPin, HIGH);
+  emergencyToggle = true;
 }
 
-void limitSwitchISR() {
-    buttonFlag = 1;
+void LimitSwitchISR() {
+  limitSwitchFlag = 1;
 }
