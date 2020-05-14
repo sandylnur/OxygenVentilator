@@ -1,0 +1,21 @@
+# Backlight turns off after some time when apparatus not in use.
+
+Notes
+ /** === MAINBOARD INITIALIZATION PROCESS ===
+   * setup display
+   * turn on motor board
+   * CHECK RECEIVE - are you on?
+   * if motor board on
+   * // TODO ##EMERGENCY BEGIN COUNT DOWN
+   *  SEND COMMAND - perform zero-in
+   *  RECEIVE COMMAND - zero-in successful
+   *  ##EMERGENCY END
+   * exit and perform loop
+   *
+   *  === MOTOR INITIALIZATION PROCESS ===
+   * CHECK SEND - i am on
+   * RECEIVE COMMAND - begin operation to perform zero-in
+   * zero-in
+   * SEND COMMAND - send zero-in confirmation to mainboard and we are ready for operation
+   * exit and perform loop
+   **/
