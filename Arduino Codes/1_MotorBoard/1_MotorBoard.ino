@@ -2,7 +2,7 @@
  * Project Name     : MauriVent - Motor Arduino
  * Version          : Version 0.1
  * Date Created     : 09/09/2020  **DD/MM/YYYY
- * Date Updated     : 
+ * Date Updated     : 15/05/2020
  * Author           : 
  * Board Name       : Mei Mei
  **/
@@ -53,7 +53,7 @@ void loop() {
   // put your main code here, to run repeatedly:
   ButtonClicked(CheckForButtonClick());
 
-  OperateVentilator();
+  //OperateVentilator();
 }
 
 void ButtonClicked(bool _wasButtonClicked) {
@@ -67,6 +67,7 @@ void ButtonClicked(bool _wasButtonClicked) {
        * begin operation with new updated values
        * 
        **/
+      SendCheckSignal();
       
     } else {
       // ventilator is in stop position and will now initiate
@@ -77,6 +78,7 @@ void ButtonClicked(bool _wasButtonClicked) {
        * set status to allow ventilator to operate
        * 
        **/
+      SendCheckSignal();
 
       isVentilatorRunning = true;
     }
@@ -84,16 +86,18 @@ void ButtonClicked(bool _wasButtonClicked) {
 }
 
 void InitializeVentilator() {
-  SendCheckSignal();
-  
+  digitalWrite(checkSendPin, HIGH);
+  // SendCheckSignal();
+
   String _commandReceived = ReceiveCommand();
   if (_commandReceived == "zero-in") {
     while (digitalRead(limitSwitch) == 0) {
       RunMotor(16, 2500, false);
     }
   }
-
+  
   SendCommand("zero-ok;");
+  digitalWrite(checkSendPin, LOW);
 }
 
 void SendCheckSignal() {
