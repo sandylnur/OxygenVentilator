@@ -26,7 +26,7 @@
 #define sdaLCDPin 4
 #define sclLCDPin 5
 
-// relay, buzzer outputsS
+// relay, buzzer outputs
 #define buzzerPin 10
 #define relayPin  11
 
@@ -36,11 +36,27 @@
 #define IE1to3 3
 #define IE2to1 0.5
 
+// push button pin
+#define pushButtonPin 6
+
+#define checkSendPin 4
+
+#define emergencySignal 12
+
+// long press push button
+long unsigned beginButtonTime;
+bool initialPress, checkButtonPass, successLongPress = false;
+const int longPressTime = 3000;
+
+// single press push button
+const int debounceTime = 500;
+
+
 // lcd connectivity to I2C library, I2C Address, Rows, Columns
 LiquidCrystal_I2C display(0x3F, 16, 2);
 
 bool ventilatorInitialized = false;
-bool checkReceiveFlag = false;
+bool checkReceiveFlag = false;  
 
 bool isVentilatorRunning = false;
 
@@ -56,8 +72,10 @@ float pionRadius        = 29.75;  // value in mm
 float shaftRadius       = 7.88;   // value in mm
 const int stepsPerRevolution = 200;
 
+String inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
+
 void setup() {
-  Serial.begin(9600); 
+  Serial.begin(9600);
   while (!Serial) {
       ; // wait for serial port to connect. Needed for native USB
   }
@@ -72,6 +90,14 @@ void setup() {
 
   // relay
   pinMode(relayPin, OUTPUT);
+  pinMode(emergencySignal, INPUT);
+
+
+  pinMode(checkSendPin, OUTPUT);
+  digitalWrite(checkSendPin, LOW);
+
+  // push button
+  pinMode(pushButtonPin, INPUT);
 
   // initialize ventilator and connect to young sister board
   InitializeVentilator();
@@ -103,8 +129,46 @@ void InitializeVentilator() {
 void loop() {
   // check for button click from Mei Mei
   ToBeNamed();
-  
+
   UpdateDisplay(true); // true -> in real-time
+
+  CheckLongPressButton();
+
+  // TODO  change high or low depending on TAVISH work.....
+  if (digitalRead(emergencySignal) == HIGH) {
+    buzzer();
+  }
+}
+
+void CheckLongPressButton() {
+    if (digitalRead(pushButtonPin) == HIGH) {
+        if (initialPress == false) {
+            beginButtonTime = millis();
+            initialPress = true;
+        } else if (initialPress == true && checkButtonPass == false && (millis() - beginButtonTime) > longPressTime) {
+            checkButtonPass = true;
+        }
+        if (checkButtonPass == true && successLongPress == false) {
+            successLongPress = true;
+            // TODO Add action for LongPress
+            /**
+             * 
+             * Send Signal to MotorBoard to stop
+             * receive confirmation to stop
+             * 
+             **/
+            buzzer();
+            digitalWrite(checkSendPin, HIGH);
+            digitalWrite(checkSendPin, LOW);
+
+        }
+    } else if (digitalRead(pushButtonPin) == LOW) {
+        if (initialPress == true) {
+            initialPress        = false;
+            checkButtonPass     = false;
+            successLongPress    = false;
+        }
+    }
 }
 
 //TODO Name this freaking variable
@@ -120,11 +184,12 @@ void ToBeNamed() {
    *      update display on first row with running values
    **/
   if (CheckForReceiveSignal(false) == true) {
+    buzzer();
     UpdateDisplay(false);
     ProcessFormulae();
-    // SendCommand(""); // TODO find a proper command structure
+    String _commandToSend = inhalationMSteps + ":" + inhalationMS + ":" + exhalationMSteps + ":" + exhalationMS + ";";
+    SendCommand(_commandToSend);
     
-
   } /* else {
     // SendCommand(""); // TODO find a proper command structure
     UpdateDisplay(false);
@@ -132,9 +197,9 @@ void ToBeNamed() {
 }
 
 void ProcessFormulae() {
-    // inhalation, clockwise
+  // inhalation, clockwise
     float repirationDuration        = 60 / runningBPM;
-    float inhalationTime            = repirationDuration / (1 + runningRV);
+    float inhalationTime            = repirationDuration / (1 + runningIE);
     float inhalationRPM             = (actuationDistance * runningRV * 60 * 7) / (inhalationTime * 44 * (pionRadius - shaftRadius) * (100));
     float inhalationNumberOfSteps   = (inhalationRPM * inhalationTime * stepsPerRevolution) / 60; // 400 -> stepsPerRevolution
 
@@ -154,13 +219,12 @@ void ProcessFormulae() {
 
     float exhalFactorDelMicroSec = ((inhalationTime * runningIE) * 1000000) / (2 * inhalationMotorMicroSteps);
     int exhalFacDelMicroSec = int(exhalFactorDelMicroSec);
+    
 
-/*
   inhalationMSteps = inhalationMotorMicroSteps;
   inhalationMS     = inhalFacDelMicroSec;
   exhalationMSteps = exhalationMotorMicroSteps;
   exhalationMS     = exhalFacDelMicroSec;
-*/
 }
 
 void SetupDisplay() {
@@ -181,44 +245,46 @@ void UpdateDisplay(bool _inRealTime) {
   float _realIE  = GetPotInput("PRESETS");
   String _toDisplay, _toPrintBPM, _toPrintRV, _toPrintIE;
 
-  if (_realBPM != lastReadBPM || _realRV != lastReadRV || _realIE != lastReadIE) {
+  //if (_realBPM != lastReadBPM || _realRV != lastReadRV || _realIE != lastReadIE) {
+    /*
     lastReadBPM = _realBPM;
     lastReadRV  = _realRV;
     lastReadIE  = _realIE;
+    */
 
     // string to print BPM
     _toPrintBPM = String(_realBPM);
 
     // string to print RV
-    if (int(_realRV) < 10) {
+    if (int(_realRV) >= 100) {
+      _toPrintRV = String(_realRV);
+    } else if (int(_realRV) < 10) {
       _toPrintRV = "  " + String(_realRV);
     } else if (int(_realRV) < 100) {
       _toPrintRV = " " + String(_realRV);
-    } else if (int(_realRV) == 100) {
-      _toPrintRV = String(_realRV);
     }
 
     // string to print I:E
-    if (_realIE == IE1to1){
+    if (_realIE == IE1to1) {
       _toPrintIE = "1:1";
-    } else if (_realIE == IE1to2){
+    } else if (_realIE == IE1to2) {
       _toPrintIE = "1:2";
-    } else if (_realIE == IE1to3){
+    } else if (_realIE == IE1to3) {
       _toPrintIE = "1:3";
-    } else if (_realIE == IE2to1){
+    } else if (_realIE == IE2to1) {
       _toPrintIE = "2:1";
     }
 
     _toDisplay = _toPrintBPM + "    " + _toPrintRV + "    " + _toPrintIE;
-  }
+  //}
 
   if (_inRealTime == false) {
     display.setCursor(0, 0);
     display.print(_toDisplay);
 
-    runningBPM = lastReadBPM;
-    runningRV  = lastReadRV;
-    runningIE  = lastReadIE;
+    runningBPM = _realBPM;
+    runningRV  = _realRV;
+    runningIE  = _realIE;
 
   } else {
     display.setCursor(0, 1);
@@ -283,6 +349,10 @@ bool CheckForReceiveSignal(bool _waitForCheck) {
 
 void CheckReceiveISR() {
   checkReceiveFlag = true;
+}
+
+void buzzer() {
+    tone(buzzerPin, 1000, 500);
 }
 
 // TODO to be transfered to a class
