@@ -70,7 +70,7 @@ float runningIE;
 float actuationDistance = 50;     // value in mm
 float pionRadius        = 29.75;  // value in mm
 float shaftRadius       = 7.88;   // value in mm
-const int stepsPerRevolution = 200;
+const int stepsPerRevolution = 200; // please don't change unless you are a stepperm motor expert
 
 String inhalationMSteps, inhalationMS, exhalationMSteps, exhalationMS;
 
@@ -128,7 +128,7 @@ void InitializeVentilator() {
 
 void loop() {
   // check for button click from Mei Mei
-  ToBeNamed();
+  CheckSinglePressButton();
 
   UpdateDisplay(true); // true -> in real-time
 
@@ -138,62 +138,6 @@ void loop() {
   if (digitalRead(emergencySignal) == HIGH) {
     buzzer();
   }
-}
-
-void CheckLongPressButton() {
-    if (digitalRead(pushButtonPin) == HIGH) {
-        if (initialPress == false) {
-            beginButtonTime = millis();
-            initialPress = true;
-        } else if (initialPress == true && checkButtonPass == false && (millis() - beginButtonTime) > longPressTime) {
-            checkButtonPass = true;
-        }
-        if (checkButtonPass == true && successLongPress == false) {
-            successLongPress = true;
-            // TODO Add action for LongPress
-            /**
-             * 
-             * Send Signal to MotorBoard to stop
-             * receive confirmation to stop
-             * 
-             **/
-            buzzer();
-            digitalWrite(checkSendPin, HIGH);
-            digitalWrite(checkSendPin, LOW);
-
-        }
-    } else if (digitalRead(pushButtonPin) == LOW) {
-        if (initialPress == true) {
-            initialPress        = false;
-            checkButtonPass     = false;
-            successLongPress    = false;
-        }
-    }
-}
-
-//TODO Name this freaking variable
-void ToBeNamed() {
-  /**
-   * if check for received signal is true
-   *    if ventilator not running
-   *      SEND COMMAND - real time values
-   *      update display on first row with running values
-   *      set ventilator status to running
-   *    else 
-   *      SEND COMMAND - real time values
-   *      update display on first row with running values
-   **/
-  if (CheckForReceiveSignal(false) == true) {
-    buzzer();
-    UpdateDisplay(false);
-    ProcessFormulae();
-    String _commandToSend = inhalationMSteps + ":" + inhalationMS + ":" + exhalationMSteps + ":" + exhalationMS + ";";
-    SendCommand(_commandToSend);
-    
-  } /* else {
-    // SendCommand(""); // TODO find a proper command structure
-    UpdateDisplay(false);
-  } */
 }
 
 void ProcessFormulae() {
@@ -328,6 +272,60 @@ float GetPotInput(String _potentiometer) {
     }
 }
 
+void CheckSinglePressButton() {
+  /**
+   * if check for received signal is true
+   *    if ventilator not running
+   *      SEND COMMAND - real time values
+   *      update display on first row with running values
+   *      set ventilator status to running
+   *    else 
+   *      SEND COMMAND - real time values
+   *      update display on first row with running values
+   **/
+  if (CheckForReceiveSignal(false) == true) {
+    buzzer();
+    UpdateDisplay(false);
+    ProcessFormulae();
+    String _commandToSend = inhalationMSteps + ":" + inhalationMS + ":" + exhalationMSteps + ":" + exhalationMS + ";";
+    SendCommand(_commandToSend);
+    
+  } /* else {
+    // SendCommand(""); // TODO find a proper command structure
+    UpdateDisplay(false);
+  } */
+}
+
+void CheckLongPressButton() {
+    if (digitalRead(pushButtonPin) == HIGH) {
+        if (initialPress == false) {
+            beginButtonTime = millis();
+            initialPress = true;
+        } else if (initialPress == true && checkButtonPass == false && (millis() - beginButtonTime) > longPressTime) {
+            checkButtonPass = true;
+        }
+        if (checkButtonPass == true && successLongPress == false) {
+            successLongPress = true;
+            // TODO Add action for LongPress
+            /**
+             * 
+             * Send Signal to MotorBoard to stop
+             * receive confirmation to stop
+             * 
+             **/
+            buzzer();
+            digitalWrite(checkSendPin, HIGH);
+            digitalWrite(checkSendPin, LOW);
+        }
+    } else if (digitalRead(pushButtonPin) == LOW) {
+        if (initialPress == true) {
+            initialPress        = false;
+            checkButtonPass     = false;
+            successLongPress    = false;
+        }
+    }
+}
+
 bool CheckForReceiveSignal(bool _waitForCheck) {
   if (_waitForCheck == true) {
     while (checkReceiveFlag == false) {
@@ -354,45 +352,3 @@ void CheckReceiveISR() {
 void buzzer() {
     tone(buzzerPin, 1000, 500);
 }
-
-// TODO to be transfered to a class
-#pragma region SC 
-void SendCommand(String _command) {
-  int _commandLength = _command.length() + 1;
-  char _commandToSend[_commandLength];
-  _command.toCharArray(_commandToSend, _commandLength);
-
-  // send the command
-  Serial.write(_commandToSend);
-  
-  // wait for all data to be sent
-  Serial.flush();
-
-  // check if command was sent
-  bool _sentStatus = false;
-  while (_sentStatus == false) {
-    if (Serial.available() > 0 ) {
-      // read string if available until character ";"
-      String _receivedCommand = Serial.readStringUntil(';');
-      if (_receivedCommand == "Ok") {
-        _sentStatus = true;
-      }
-    }
-  }
-}
-
-String ReceiveCommand() {
-// keep checking until a command is received
-  bool _receiveStatus = false;
-  while (_receiveStatus == false) {
-    if (Serial.available() > 0 ) {
-      // read string if available until character ";"
-      String _receivedCommand = Serial.readStringUntil(';');
-      Serial.write("Ok;");
-      Serial.flush();
-      _receiveStatus = true;
-      return _receivedCommand;
-    }
-  }
-}
-#pragma endregion
